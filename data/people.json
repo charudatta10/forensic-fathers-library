@@ -1,0 +1,47 @@
+[
+  {"slug":"bernard-spilsbury","name":"Bernard Spilsbury","title":"Father of Forensic Science","bio":"Revolutionized forensic pathology and expert witness testimony.","quote":"The truth is there for those trained to see it.","links":["https://en.wikipedia.org/wiki/Bernard_Spilsbury"]},
+
+  {"slug":"mathieu-orfila","name":"Mathieu Orfila","title":"Father of Toxicology","bio":"Founded modern toxicology and systematic poison analysis.","quote":"Science must serve justice.","links":["https://en.wikipedia.org/wiki/Mathieu_Orfila"]},
+
+  {"slug":"alphonse-bertillon","name":"Alphonse Bertillon","title":"Father of Criminal Identification & Forensic Photography","bio":"Developed anthropometry and forensic photography.","quote":"Measurement reveals identity.","links":["https://en.wikipedia.org/wiki/Alphonse_Bertillon"]},
+
+  {"slug":"calvin-goddard","name":"Calvin Hooker Goddard","title":"Father of Ballistics","bio":"Founded forensic firearms examination.","quote":"Every bullet tells a story.","links":["https://en.wikipedia.org/wiki/Calvin_Goddard"]},
+
+  {"slug":"francis-galton","name":"Francis Galton","title":"Father of Fingerprints","bio":"Established fingerprint classification.","quote":"Patterns define individuality.","links":["https://en.wikipedia.org/wiki/Francis_Galton"]},
+
+  {"slug":"oscar-amoedo","name":"Oscar Amoedo","title":"Father of Forensic Odontology","bio":"Pioneered forensic dentistry.","quote":"Teeth outlive truth.","links":["https://en.wikipedia.org/wiki/Oscar_Amo%C3%ABdo"]},
+
+  {"slug":"thomas-dwight","name":"Thomas Dwight","title":"Father of Forensic Anthropology","bio":"Advanced skeletal identification.","quote":"Bones speak silently.","links":["https://en.wikipedia.org/wiki/Thomas_Dwight"]},
+
+  {"slug":"paolo-zacchia","name":"Paolo Zacchia","title":"Father of Forensic Medicine","bio":"Integrated medicine with law.","quote":"Medicine serves justice.","links":["https://en.wikipedia.org/wiki/Paolo_Zacchia"]},
+
+  {"slug":"frank-john-wilson","name":"Frank John Wilson","title":"Father of Forensic Accounting","bio":"Exposed financial crimes.","quote":"Follow the money.","links":["https://en.wikipedia.org/wiki/Frank_J._Wilson"]},
+
+  {"slug":"hugo-munsterberg","name":"Hugo Münsterberg","title":"Father of Forensic Psychology","bio":"Applied psychology to legal systems.","quote":"The mind leaves evidence.","links":["https://en.wikipedia.org/wiki/Hugo_M%C3%BCnsterberg"]},
+
+  {"slug":"arthur-mourant","name":"Arthur Mourant","title":"Father of Forensic Serology","bio":"Pioneered blood group analysis.","quote":"Blood never lies.","links":["https://en.wikipedia.org/wiki/Arthur_Mourant"]},
+
+  {"slug":"alec-jeffreys","name":"Alec Jeffreys","title":"Father of DNA Fingerprinting","bio":"Invented DNA profiling.","quote":"DNA is identity.","links":["https://en.wikipedia.org/wiki/Alec_Jeffreys"]},
+
+  {"slug":"albert-osborn","name":"Albert S. Osborn","title":"Father of Questioned Documents","bio":"Standardized document examination.","quote":"Handwriting reveals truth.","links":["https://en.wikipedia.org/wiki/Albert_S._Osborn"]},
+
+  {"slug":"hans-gross","name":"Hans Gross","title":"Father of Criminalistics","bio":"Systematized crime investigation.","quote":"Details matter.","links":["https://en.wikipedia.org/wiki/Hans_Gross"]},
+
+  {"slug":"cesare-lombroso","name":"Cesare Lombroso","title":"Father of Criminology","bio":"Studied criminal behavior.","quote":"Crime has patterns.","links":["https://en.wikipedia.org/wiki/Cesare_Lombroso"]},
+
+  {"slug":"alfred-nobel","name":"Alfred Nobel","title":"Father of Explosives","bio":"Invented dynamite.","quote":"Power must be controlled.","links":["https://en.wikipedia.org/wiki/Alfred_Nobel"]},
+
+  {"slug":"jan-svartvik","name":"Jan Svartvik","title":"Father of Forensic Linguistics","bio":"Applied linguistics to law.","quote":"Language leaves fingerprints.","links":["https://en.wikipedia.org/wiki/Jan_Svartvik"]},
+
+  {"slug":"bernard-greenberg","name":"Bernard Greenberg","title":"Father of Forensic Entomology","bio":"Used insects to determine time of death.","quote":"Insects keep time.","links":["https://en.wikipedia.org/wiki/Bernard_Greenberg"]},
+
+  {"slug":"ray-murray","name":"Ray Murray","title":"Father of Forensic Geology","bio":"Applied earth science to crime.","quote":"The earth remembers.","links":["https://en.wikipedia.org/wiki/Forensic_geology"]},
+
+  {"slug":"michael-anderson","name":"Michael Anderson","title":"Father of Computer Forensics","bio":"Developed digital forensic methods.","quote":"Data never forgets.","links":["https://en.wikipedia.org/wiki/Computer_forensics"]},
+
+  {"slug":"eduard-piotrowski","name":"Eduard Piotrowski","title":"Father of Bloodstain Pattern Analysis","bio":"Analyzed bloodstain dynamics.","quote":"Blood obeys physics.","links":["https://en.wikipedia.org/wiki/Bloodstain_pattern_analysis"]},
+
+  {"slug":"norman-gunn","name":"Norman H. Gunn","title":"Father of Forensic Podiatry","bio":"Foot impression analysis.","quote":"Every step leaves evidence.","links":["https://en.wikipedia.org/wiki/Forensic_podiatry"]},
+
+  {"slug":"virginia-lynch","name":"Virginia Lynch","title":"Founder of Forensic Nursing","bio":"Integrated nursing and law.","quote":"Care meets justice.","links":["https://en.wikipedia.org/wiki/Forensic_nursing"]}
+]
