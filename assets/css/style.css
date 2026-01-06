@@ -1,6 +1,6 @@
 /* =========================================================
-   NFSU Glassmorphism Theme
-   Forensic Library – QR Profile Pages
+   NFSU Archival Paper Theme
+   Forensic Library – Old Book / Manuscript Style
    ========================================================= */
 
 /* ---------- Reset ---------- */
@@ -12,112 +12,138 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: "Georgia", "Times New Roman", serif;
-  background: linear-gradient(
-    135deg,
-    #0b1c3d 0%,
-    #1b2e5c 40%,
-    #8b1e1e 100%
-  );
+
+  font-family: "Georgia", "Garamond", "Times New Roman", serif;
+  font-size: 16px;
+
+  background:
+    radial-gradient(circle at top left, rgba(120, 90, 40, 0.12), transparent 45%),
+    radial-gradient(circle at bottom right, rgba(90, 60, 30, 0.12), transparent 45%),
+    #f6f1e7;
+
+  color: #2b1e12;
   min-height: 100vh;
-  color: #0b1c3d;
 }
 
-/* ---------- Glass Containers ---------- */
+/* ---------- Page Container ---------- */
 .container,
 .card {
-  max-width: 760px;
-  margin: 48px auto;
-  padding: 28px 32px;
+  max-width: 780px;
+  margin: 56px auto;
+  padding: 42px 46px;
 
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #fbf7ef;
 
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid #c9b79c;
+  border-radius: 4px;
 
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 1px rgba(255,255,255,0.2);
+    0 2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 0 60px rgba(150, 120, 60, 0.08);
 }
 
 /* ---------- Headings ---------- */
 h1 {
-  font-size: 2rem;
+  font-size: 2.2rem;
   text-align: center;
-  margin-bottom: 6px;
-  color: #0b1c3d;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+
+  color: #3b2a1a;
 }
 
 h2 {
   font-size: 1.15rem;
   text-align: center;
   margin-top: 0;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
+
   font-weight: normal;
-  color: #8b1e1e;
+  font-style: italic;
+  color: #6b4b2a;
 }
 
 h3 {
-  margin-top: 28px;
-  margin-bottom: 10px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(11, 28, 61, 0.3);
-  color: #0b1c3d;
+  margin-top: 36px;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+
+  font-size: 1.1rem;
+  letter-spacing: 0.3px;
+
+  border-bottom: 1px solid #b9a688;
+  color: #3b2a1a;
 }
 
 /* ---------- Images ---------- */
 img {
   display: block;
-  max-width: 190px;
-  margin: 0 auto 20px;
-  border-radius: 10px;
+  max-width: 180px;
+  margin: 0 auto 26px;
+
+  border-radius: 2px;
+  border: 1px solid #a08c6a;
+
+  background: #fff;
 
   box-shadow:
-    0 6px 20px rgba(0,0,0,0.35),
-    0 0 0 3px #b38b00;
+    0 4px 10px rgba(0,0,0,0.25);
 }
 
 /* ---------- Text ---------- */
 p {
   font-size: 1rem;
-  line-height: 1.65;
-  margin-bottom: 14px;
+  line-height: 1.8;
+  margin-bottom: 18px;
+
   text-align: justify;
-  color: #0b1c3d;
+  hyphens: auto;
+
+  color: #2b1e12;
+}
+
+/* ---------- Drop Cap (Optional) ---------- */
+p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.4rem;
+  line-height: 1;
+  padding-right: 8px;
+  padding-top: 4px;
+
+  font-family: "Garamond", "Georgia", serif;
+  color: #6b4b2a;
 }
 
 /* ---------- Quote ---------- */
 blockquote {
   font-style: italic;
-  background: rgba(255, 255, 255, 0.35);
-  border-left: 5px solid #b38b00;
-  padding: 14px 18px;
-  margin: 24px 0;
-  border-radius: 8px;
-  color: #0b1c3d;
+
+  background: #f2eadc;
+  border-left: 4px solid #8b6b3f;
+
+  padding: 18px 22px;
+  margin: 32px 0;
+
+  color: #3b2a1a;
 }
 
 /* ---------- Lists ---------- */
 ul {
-  padding-left: 20px;
+  padding-left: 24px;
 }
 
 li {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 /* ---------- Links ---------- */
 a {
-  color: #0b1c3d;
-  text-decoration: none;
-  font-weight: 600;
+  color: #5a3e22;
+  text-decoration: underline;
 }
 
 a:hover {
-  color: #b38b00;
-  text-decoration: underline;
+  color: #8b6b3f;
 }
 
 /* ---------- Home Page List ---------- */
@@ -127,8 +153,8 @@ a:hover {
 }
 
 .container li {
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(11, 28, 61, 0.2);
+  padding: 16px 0;
+  border-bottom: 1px dotted #b9a688;
 }
 
 .container li:last-child {
@@ -138,29 +164,48 @@ a:hover {
 /* ---------- Back Link ---------- */
 .card a[href*="index.html"] {
   display: inline-block;
-  margin-top: 28px;
+  margin-top: 36px;
+
   font-size: 0.95rem;
-  color: #8b1e1e;
+  font-style: italic;
+  color: #6b4b2a;
+}
+
+/* ---------- Marginal Rule (Book Feel) ---------- */
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 8px;
+  background: linear-gradient(
+    to bottom,
+    rgba(139, 107, 63, 0.25),
+    rgba(139, 107, 63, 0.05),
+    rgba(139, 107, 63, 0.25)
+  );
 }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 640px) {
   .container,
   .card {
-    margin: 20px;
-    padding: 22px 20px;
+    margin: 24px;
+    padding: 28px 26px;
   }
 
   h1 {
-    font-size: 1.6rem;
+    font-size: 1.7rem;
   }
 
   img {
-    max-width: 160px;
+    max-width: 150px;
   }
 }
 
-/* ---------- Print (Library Safe) ---------- */
+/* ---------- Print (Library / Archive Safe) ---------- */
 @media print {
   body {
     background: #ffffff;
@@ -171,5 +216,10 @@ a:hover {
     background: #ffffff;
     box-shadow: none;
     border: 1px solid #000;
+  }
+
+  a {
+    color: #000;
+    text-decoration: none;
   }
 }
