@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebLLM + Forensic Science Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .content-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .people-list {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .people-list h2 {
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 1.3em;
+    }
+
+    .people-list ul {
+      list-style: none;
+    }
+
+    .people-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .people-list li:last-child {
+      border-bottom: none;
+    }
+
+    .people-list a {
+      color: #667eea;
+      text-decoration: none;
+      transition: all 0.3s;
+      display: block;
+      padding: 8px;
+      border-radius: 5px;
+    }
+
+    .people-list a:hover {
+      background: #f0f0ff;
+      color: #764ba2;
+      padding-left: 15px;
+    }
+
+    .chatbot-container {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .chat-header h2 {
+      color: #333;
+      font-size: 1.3em;
+    }
+
+    .status-indicator {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #ccc;
+      transition: all 0.3s;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .status-indicator.loading {
+      background: #ffb74d;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-indicator.success {
+      background: #4caf50;
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+    }
+
+    .status-indicator.error {
+      background: #f44336;
+      box-shadow: 0 0 15px rgba(244, 67, 54, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: #fafafa;
+    }
+
+    .message {
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 10px;
+      line-height: 1.4;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .user-message {
+      background: #e3f2fd;
+      text-align: right;
+      color: #1565c0;
+      margin-left: 30px;
+      border-left: 3px solid #2196f3;
+    }
+
+    .bot-message {
+      background: #f5f5f5;
+      text-align: left;
+      color: #333;
+      margin-right: 30px;
+      border-left: 3px solid #667eea;
+    }
+
+    .context-indicator {
+      font-size: 11px;
+      color: #999;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #ddd;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+    }
+
+    input, button {
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    input {
+      flex: 1;
+      border: 2px solid #e0e0e0;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      min-width: 100px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Floating Button */
+    .floating-button {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: white;
+      transition: all 0.3s;
+      z-index: 99;
+    }
+
+    .floating-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .floating-button:active {
+      transform: scale(0.95);
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* Loading Window */
+    .loading-window {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .loading-window h2 {
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .progress-item {
+      display: flex;
+      align-items: center;
+      margin: 15px 0;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+
+    .progress-item label {
+      flex: 1;
+      margin-left: 15px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .progress-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ccc;
+      transition: all 0.3s;
+    }
+
+    .progress-dot.loading {
+      background: #ffb74d;
+      animation: pulse 1s infinite;
+    }
+
+    .progress-dot.success {
+      background: #4caf50;
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+    }
+
+    .progress-dot.error {
+      background: #f44336;
+      box-shadow: 0 0 10px rgba(244, 67, 54, 0.6);
+    }
+
+    .progress-message {
+      font-size: 12px;
+      color: #999;
+      margin-left: 15px;
+      margin-top: 3px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+      transition: color 0.3s;
+      min-width: auto;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    }
+
+    .close-btn:hover {
+      color: #333;
+    }
+
+    .loading-window {
+      position: relative;
+    }
+
+    /* Scrollbar styling */
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    #chat::-webkit-scrollbar-thumb {
+      background: #667eea;
+      border-radius: 10px;
+    }
+
+    #chat::-webkit-scrollbar-thumb:hover {
+      background: #764ba2;
+    }
+
+    @media (max-width: 1024px) {
+      .content-wrapper {
+        grid-template-columns: 1fr;
+      }
+
+      .people-list, .chatbot-container {
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="loading-window">
+      <button class="close-btn" onclick="closeModal()">×</button>
+      <h2>🚀 System Initialization</h2>
+      
+      <div class="progress-item">
+        <div class="progress-dot loading" id="dot-webllm"></div>
+        <label>Loading WebLLM Library</label>
+        <div class="progress-message" id="msg-webllm"></div>
+      </div>
+      
+      <div class="progress-item">
+        <div class="progress-dot" id="dot-engine"></div>
+        <label>Creating AI Engine</label>
+        <div class="progress-message" id="msg-engine"></div>
+      </div>
+      
+      <div class="progress-item">
+        <div class="progress-dot" id="dot-docs"></div>
+        <label>Loading Documents</label>
+        <div class="progress-message" id="msg-docs"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="floating-button" onclick="initializeSystem()" title="Load AI System">⚡</button>
+
+  <div class="main-container">
+    <h1>🔬 Forensic Science AI Assistant</h1>
+    
+    <div class="content-wrapper">
+      <div class="people-list">
+        <h2>Fathers of Forensic Science</h2>
+        <ul>
+          <li><a href="#" onclick="searchPerson('Bernard Spilsbury')">Bernard Spilsbury</a></li>
+          <li><a href="#" onclick="searchPerson('Mathieu Orfila')">Mathieu Orfila</a></li>
+          <li><a href="#" onclick="searchPerson('Alphonse Bertillon')">Alphonse Bertillon</a></li>
+          <li><a href="#" onclick="searchPerson('Calvin Goddard')">Calvin Hooker Goddard</a></li>
+          <li><a href="#" onclick="searchPerson('Francis Galton')">Francis Galton</a></li>
+          <li><a href="#" onclick="searchPerson('Oscar Amoedo')">Oscar Amoedo</a></li>
+          <li><a href="#" onclick="searchPerson('Thomas Dwight')">Thomas Dwight</a></li>
+          <li><a href="#" onclick="searchPerson('Paolo Zacchia')">Paolo Zacchia</a></li>
+          <li><a href="#" onclick="searchPerson('Frank John Wilson')">Frank John Wilson</a></li>
+          <li><a href="#" onclick="searchPerson('Hugo Münsterberg')">Hugo Münsterberg</a></li>
+          <li><a href="#" onclick="searchPerson('Arthur Mourant')">Arthur Mourant</a></li>
+          <li><a href="#" onclick="searchPerson('Alec Jeffreys')">Alec Jeffreys</a></li>
+          <li><a href="#" onclick="searchPerson('Albert Osborn')">Albert S. Osborn</a></li>
+          <li><a href="#" onclick="searchPerson('Hans Gross')">Hans Gross</a></li>
+          <li><a href="#" onclick="searchPerson('Cesare Lombroso')">Cesare Lombroso</a></li>
+          <li><a href="#" onclick="searchPerson('Alfred Nobel')">Alfred Nobel</a></li>
+          <li><a href="#" onclick="searchPerson('Jan Svartvik')">Jan Svartvik</a></li>
+          <li><a href="#" onclick="searchPerson('Bernard Greenberg')">Bernard Greenberg</a></li>
+          <li><a href="#" onclick="searchPerson('Ray Murray')">Ray Murray</a></li>
+          <li><a href="#" onclick="searchPerson('Michael Anderson')">Michael Anderson</a></li>
+          <li><a href="#" onclick="searchPerson('Eduard Piotrowski')">Eduard Piotrowski</a></li>
+          <li><a href="#" onclick="searchPerson('Norman Gunn')">Norman H. Gunn</a></li>
+          <li><a href="#" onclick="searchPerson('Virginia Lynch')">Virginia Lynch</a></li>
+        </ul>
+      </div>
+
+      <div class="chatbot-container">
+        <div class="chat-header">
+          <h2>💬 Chat</h2>
+          <div class="status-indicator" id="statusDot"></div>
+        </div>
+        
+        <div id="chat"></div>
+        
+        <div class="input-area">
+          <input id="userInput" placeholder="Ask about forensic science..." disabled/>
+          <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    let chatEngine = null;
+    let SAMPLE_DOCS = [];
+    let documentEmbeddings = {};
+
+    function updateStatusDot(status) {
+      const dot = document.getElementById('statusDot');
+      dot.className = 'status-indicator';
+      if (status === 'loading') dot.classList.add('loading');
+      else if (status === 'success') dot.classList.add('success');
+      else if (status === 'error') dot.classList.add('error');
+    }
+
+    function updateProgressDot(elementId, status, message) {
+      const dot = document.getElementById(`dot-${elementId}`);
+      const msg = document.getElementById(`msg-${elementId}`);
+      dot.className = 'progress-dot';
+      if (status === 'loading') dot.classList.add('loading');
+      else if (status === 'success') dot.classList.add('success');
+      else if (status === 'error') dot.classList.add('error');
+      if (msg) msg.textContent = message;
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    // Load local docs.json
+    async function loadLocalDocs() {
+      try {
+        const response = await fetch('./docs.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        SAMPLE_DOCS = await response.json();
+        updateProgressDot('docs', 'success', `Loaded ${SAMPLE_DOCS.length} documents`);
+        return true;
+      } catch (error) {
+        updateProgressDot('docs', 'error', `Failed: ${error.message}`);
+        return false;
+      }
+    }
+
+    // Compute embedding
+    async function computeEmbedding(text) {
+      if (!text || typeof text !== 'string') text = '';
+      const normalized = text.toLowerCase();
+      const words = normalized.split(/\W+/).filter(w => w.length > 0);
+      
+      const embedding = new Array(128).fill(0);
+      for (const word of words) {
+        let hash = 0;
+        for (let i = 0; i < word.length; i++) {
+          hash = ((hash << 5) - hash) + word.charCodeAt(i);
+          hash |= 0;
+        }
+        const dim = Math.abs(hash) % 128;
+        embedding[dim] += 1;
+      }
+      
+      const magnitude = Math.sqrt(embedding.reduce((a, b) => a + b * b, 0));
+      if (magnitude > 0) return embedding.map(v => v / magnitude);
+      return embedding;
+    }
+
+    // Cosine similarity
+    function cosineSimilarity(a, b) {
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+      }
+      const denom = Math.sqrt(normA) * Math.sqrt(normB);
+      return denom > 0 ? dot / denom : 0;
+    }
+
+    // Retrieve context
+    async function retrieveContext(query) {
+      try {
+        const queryEmbedding = await computeEmbedding(query);
+        let bestDoc = null;
+        let bestScore = -1;
+        
+        for (const doc of SAMPLE_DOCS) {
+          if (!documentEmbeddings[doc.id]) {
+            const docText = doc.text || doc.bio || doc.title || doc.name || '';
+            documentEmbeddings[doc.id] = await computeEmbedding(docText);
+          }
+          
+          const similarity = cosineSimilarity(queryEmbedding, documentEmbeddings[doc.id]);
+          
+          if (similarity > bestScore) {
+            bestScore = similarity;
+            bestDoc = doc;
+          }
+        }
+        
+        if (bestDoc && bestScore > 0.05) {
+          const docTitle = bestDoc.title || bestDoc.name || 'Unknown';
+          const docContent = bestDoc.text || bestDoc.bio || '';
+          return `[From: ${docTitle}]\n${docContent}`;
+        }
+        return '';
+        
+      } catch (error) {
+        return '';
+      }
+    }
+
+    // Load WebLLM
+    async function loadWebLLM() {
+      try {
+        updateProgressDot('webllm', 'loading', 'Connecting to CDN...');
+        const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm');
+        window.webllm = webllm;
+        updateProgressDot('webllm', 'success', 'Library loaded');
+        return true;
+      } catch (error) {
+        updateProgressDot('webllm', 'error', error.message);
+        return false;
+      }
+    }
+
+    // Initialize system
+    async function initializeSystem() {
+      document.getElementById('modalOverlay').classList.add('active');
+      updateStatusDot('loading');
+
+      const loaded = await loadWebLLM();
+      if (!loaded) {
+        updateStatusDot('error');
+        return;
+      }
+
+      try {
+        updateProgressDot('engine', 'loading', 'Creating engine...');
+        const engine = await window.webllm.CreateMLCEngine('TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC', {
+          initProgressCallback: (progress) => {
+            const pct = Math.floor((progress.progress || 0) * 100);
+            updateProgressDot('engine', 'loading', `${pct}% loaded`);
+          }
+        });
+        
+        chatEngine = engine;
+        updateProgressDot('engine', 'success', 'Engine ready');
+
+        updateProgressDot('docs', 'loading', 'Loading documents...');
+        await loadLocalDocs();
+
+        setTimeout(() => {
+          closeModal();
+          updateStatusDot('success');
+          document.getElementById('userInput').disabled = false;
+          document.getElementById('sendBtn').disabled = false;
+          document.getElementById('userInput').focus();
+        }, 1500);
+
+      } catch (error) {
+        updateProgressDot('engine', 'error', error.message);
+        updateStatusDot('error');
+      }
+    }
+
+    // Send message
+    async function sendMessage() {
+      const input = document.getElementById('userInput').value.trim();
+      if (!input || !chatEngine) return;
+      
+      document.getElementById('userInput').value = '';
+      document.getElementById('userInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+      updateStatusDot('loading');
+      
+      const chatDiv = document.getElementById('chat');
+      
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user-message';
+      userMsg.textContent = input;
+      chatDiv.appendChild(userMsg);
+      
+      try {
+        const context = await retrieveContext(input);
+        
+        const systemPrompt = context ? 
+          `You are a helpful forensic science expert. Use this context:\n\n${context}` :
+          'You are a helpful forensic science expert.';
+        
+        const response = await chatEngine.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: input }
+          ],
+          temperature: 0.7,
+          max_tokens: 300
+        });
+        
+        const answer = response.choices?.[0]?.message?.content || 'No response generated';
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = answer;
+        if (context) {
+          botMsg.innerHTML += `<div class="context-indicator">📚 Context from documents used</div>`;
+        }
+        chatDiv.appendChild(botMsg);
+        updateStatusDot('success');
+        
+      } catch (error) {
+        const errMsg = document.createElement('div');
+        errMsg.className = 'message bot-message';
+        errMsg.style.color = '#d32f2f';
+        errMsg.textContent = `Error: ${error.message}`;
+        chatDiv.appendChild(errMsg);
+        updateStatusDot('error');
+      } finally {
+        document.getElementById('userInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('userInput').focus();
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      }
+    }
+
+    function searchPerson(name) {
+      document.getElementById('userInput').value = `Tell me about ${name}`;
+      document.getElementById('userInput').focus();
+    }
+
+    window.sendMessage = sendMessage;
+    window.searchPerson = searchPerson;
+    window.closeModal = closeModal;
+    window.initializeSystem = initializeSystem;
+  </script>
+</body>
+</html>

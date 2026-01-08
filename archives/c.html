@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebLLM + MCP + CAG Chatbot</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    #chat {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin-bottom: 20px;
+      height: 400px;
+      overflow-y: auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    #log {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+      height: 200px;
+      overflow-y: auto;
+      border-radius: 10px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+      border-bottom: 1px solid #333;
+    }
+    .log-stage { color: #4fc3f7; }
+    .log-progress { color: #81c784; }
+    .log-waiting { color: #ffb74d; }
+    .log-downloading { color: #64b5f6; }
+    .log-running { color: #4caf50; }
+    .log-complete { color: #8bc34a; font-weight: bold; }
+    .log-error { color: #f44336; }
+    .log-info { color: #bb86fc; }
+    
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin: 5px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50, #8bc34a);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    .stage-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .stage-waiting { background: #ffb74d; }
+    .stage-downloading { background: #64b5f6; }
+    .stage-running { background: #4caf50; }
+    .stage-complete { background: #8bc34a; }
+    
+    input, button {
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    input {
+      width: 70%;
+      margin-right: 10px;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background: #1976d2; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .user-message {
+      background: #e3f2fd;
+      text-align: right;
+    }
+    .bot-message {
+      background: #f5f5f5;
+      text-align: left;
+    }
+    
+    /* Status indicators */
+    .status-box {
+      background: #2d3748;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #3182ce;
+    }
+    .status-good { border-left-color: #38a169; }
+    .status-warning { border-left-color: #d69e2e; }
+    .status-error { border-left-color: #e53e3e; }
+    
+    /* Loader animation */
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h2>WebLLM + MCP + CAG Chatbot</h2>
+  
+  <div id="statusBox" class="status-box">
+    <div id="browserStatus"><span class="loader"></span>Checking browser compatibility...</div>
+    <div id="webgpuStatus"><span class="loader"></span>Checking WebGPU...</div>
+    <div id="webllmStatus"><span class="loader"></span>Loading WebLLM library...</div>
+  </div>
+  
+  <div id="log"></div>
+  
+  <div id="progressContainer" style="display: none;">
+    <div id="currentStage">Initializing...</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div id="stageDetails"></div>
+  </div>
+  
+  <div id="chat"></div>
+  
+  <div>
+    <input id="userInput" placeholder="Initializing WebLLM..." disabled/>
+    <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+  </div>
+
+  <script type="module">
+    // DECLARE ALL VARIABLES AT THE TOP
+    let currentStage = 'waiting';
+    let currentProgress = 0;
+    let stages = [];
+
+    // Logging system
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const timestamp = new Date().toLocaleTimeString();
+      
+      let stageIcon = '';
+      if (type.includes('stage-')) {
+        const stageType = type.replace('stage-', '');
+        stageIcon = `<span class="stage-indicator stage-${stageType}"></span>`;
+        entry.className += ` log-${stageType}`;
+      } else {
+        entry.className += ` log-${type}`;
+      }
+      
+      entry.innerHTML = `${stageIcon}[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(elementId, message, status = 'info') {
+      const element = document.getElementById(elementId);
+      element.innerHTML = message;
+      element.className = status;
+    }
+
+    function updateProgress(stage, progress, details = '') {
+      currentStage = stage;
+      currentProgress = progress;
+      
+      document.getElementById('progressContainer').style.display = 'block';
+      document.getElementById('currentStage').innerHTML = 
+        `<span class="stage-indicator stage-${stage}"></span> ${stage.toUpperCase()}: ${details}`;
+      document.getElementById('progressFill').style.width = `${progress}%`;
+      document.getElementById('stageDetails').textContent = details;
+      
+      log(`${stage}: ${progress}% - ${details}`, `stage-${stage}`);
+    }
+
+    // Check browser compatibility
+    async function checkBrowserCompatibility() {
+      log('=== BROWSER COMPATIBILITY CHECK ===', 'info');
+      
+      // Check if we're in Edge
+      updateStatus('browserStatus', '✅ Browser: Microsoft Edge', 'status-good');
+      log('Browser: Microsoft Edge', 'info');
+      
+      // Check WebGPU support
+      updateStatus('webgpuStatus', '🔍 Checking WebGPU support...', 'status-warning');
+      let webGPUSupported = false;
+      if ('gpu' in navigator) {
+        try {
+          const adapter = await navigator.gpu.requestAdapter();
+          if (adapter) {
+            webGPUSupported = true;
+            updateStatus('webgpuStatus', '✅ WebGPU: Supported', 'status-good');
+            log('WebGPU: Supported ✅', 'complete');
+          } else {
+            updateStatus('webgpuStatus', '⚠️ WebGPU: No adapter found (using CPU)', 'status-warning');
+            log('WebGPU: No adapter found, will use CPU', 'warning');
+          }
+        } catch (e) {
+          updateStatus('webgpuStatus', `⚠️ WebGPU: Error - ${e.message} (using CPU)`, 'status-warning');
+          log(`WebGPU Error: ${e.message}, using CPU`, 'warning');
+        }
+      } else {
+        updateStatus('webgpuStatus', '⚠️ WebGPU: Not supported (using CPU)', 'status-warning');
+        log('WebGPU: Not supported, using CPU', 'warning');
+      }
+      
+      return webGPUSupported;
+    }
+
+    // Load WebLLM library dynamically
+    async function loadWebLLM() {
+      log('Loading WebLLM library...', 'info');
+      updateStatus('webllmStatus', '<span class="loader"></span> Downloading WebLLM library...', 'status-warning');
+      
+      try {
+        // Try multiple CDN sources
+        const cdnSources = [
+          "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm",
+          "https://esm.run/@mlc-ai/web-llm",
+          "https://unpkg.com/@mlc-ai/web-llm@0.2.80?module"
+        ];
+        
+        let webllmModule = null;
+        let lastError = null;
+        
+        for (const source of cdnSources) {
+          try {
+            log(`Trying CDN: ${source}`, 'info');
+            webllmModule = await import(source);
+            log(`✅ Successfully loaded from: ${source}`, 'complete');
+            break;
+          } catch (err) {
+            lastError = err;
+            log(`⚠️ Failed to load from ${source}: ${err.message}`, 'warning');
+            continue;
+          }
+        }
+        
+        if (!webllmModule) {
+          throw new Error(`All CDN sources failed. Last error: ${lastError?.message}`);
+        }
+        
+        // Store WebLLM globally
+        window.webllm = webllmModule;
+        updateStatus('webllmStatus', '✅ WebLLM: Library loaded successfully', 'status-good');
+        log('WebLLM library loaded successfully', 'complete');
+        
+        return true;
+      } catch (error) {
+        updateStatus('webllmStatus', `❌ WebLLM: Failed to load - ${error.message}`, 'status-error');
+        log(`WebLLM load error: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    // Text embedding function (simplified for demo)
+    async function embedText(text) {
+      try {
+        const engine = window.chatEngine;
+        if (!engine) throw new Error('Engine not initialized');
+        
+        // Simple fallback embedding using character frequencies
+        const embedding = new Array(128).fill(0);
+        const normalizedText = text.toLowerCase().substring(0, 1000);
+        
+        for (let i = 0; i < normalizedText.length; i++) {
+          const charCode = normalizedText.charCodeAt(i) % 128;
+          embedding[charCode] += 1;
+        }
+        
+        // Normalize
+        const sum = embedding.reduce((a, b) => a + b, 0);
+        if (sum > 0) {
+          return embedding.map(val => val / sum);
+        }
+        return embedding;
+        
+      } catch (error) {
+        log('Embedding error: ' + error.message, 'error');
+        // Return a simple zero vector as fallback
+        return new Array(128).fill(0);
+      }
+    }
+
+    // Cosine similarity
+    function cosineSim(a, b) {
+      if (!a || !b || a.length !== b.length) return 0;
+      
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+      }
+      
+      const norm = Math.sqrt(normA) * Math.sqrt(normB);
+      return norm > 0 ? dot / norm : 0;
+    }
+
+    // Retrieve context from documents
+    async function retrieveContext(query) {
+      log(`🔍 Retrieving context for: "${query}"`, 'info');
+      document.getElementById('progressContainer').style.display = 'block';
+      updateProgress('running', 30, 'Computing query embedding');
+      
+      try {
+        const qEmbed = await embedText(query);
+        updateProgress('running', 60, 'Searching for relevant documents');
+        
+        if (window.docs && window.docs.length > 0) {
+          let bestText = null;
+          let bestScore = -1;
+          
+          // Precompute embeddings if not done
+          for (let doc of window.docs) {
+            if (!window.embeddings[doc.id]) {
+              window.embeddings[doc.id] = await embedText(doc.text);
+            }
+          }
+          
+          // Find best match
+          for (let doc of window.docs) {
+            const docEmbed = window.embeddings[doc.id];
+            const score = cosineSim(qEmbed, docEmbed);
+            
+            if (score > bestScore) {
+              bestScore = score;
+              bestText = doc.text;
+            }
+          }
+          
+          if (bestText && bestScore > 0.1) {
+            log(`✅ Found relevant context (score: ${bestScore.toFixed(3)})`, 'complete');
+            updateProgress('running', 100, 'Context retrieved successfully');
+            setTimeout(() => {
+              document.getElementById('progressContainer').style.display = 'none';
+            }, 1000);
+            return bestText.substring(0, 1000); // Limit length
+          }
+        }
+        
+        // Fallback
+        updateProgress('running', 100, 'No local context found');
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 1000);
+        
+        const url = prompt("No local docs found. Enter a website URL (or cancel for no context):");
+        if (url) {
+          try {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            return data.contents.substring(0, 1000);
+          } catch (e) {
+            log('Web fetch error: ' + e.message, 'error');
+          }
+        }
+        
+        return "";
+        
+      } catch (error) {
+        log('Retrieval error: ' + error.message, 'error');
+        updateProgress('running', 0, 'Retrieval failed');
+        return "";
+      }
+    }
+
+    // Send message function
+    async function sendMessage() {
+      const input = document.getElementById('userInput').value;
+      if (!input) return;
+      
+      if (!window.chatEngine) {
+        alert('Please wait for initialization to complete.');
+        return;
+      }
+      
+      // Clear input
+      document.getElementById('userInput').value = '';
+      
+      // Display user message
+      const chatDiv = document.getElementById('chat');
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user-message';
+      userMsg.innerHTML = `<strong>You:</strong> ${input}`;
+      chatDiv.appendChild(userMsg);
+      
+      // Disable input during processing
+      document.getElementById('userInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+      
+      try {
+        log(`💬 Processing query: "${input}"`, 'info');
+        document.getElementById('progressContainer').style.display = 'block';
+        updateProgress('running', 20, 'Retrieving context...');
+        
+        const context = await retrieveContext(input);
+        
+        updateProgress('running', 60, 'Generating response with AI...');
+        
+        const prompt = context ? 
+          `Context information:\n${context}\n\nQuestion: ${input}\n\nAnswer based on the context:` : 
+          `Question: ${input}\n\nAnswer:`;
+        
+        const reply = await window.chatEngine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 300
+        });
+        
+        updateProgress('running', 90, 'Formatting response...');
+        const botResponse = reply.choices?.[0]?.message?.content || "[No response generated]";
+        
+        // Display bot response
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = `<strong>Assistant:</strong> ${botResponse}`;
+        chatDiv.appendChild(botMsg);
+        
+        updateProgress('running', 100, 'Response complete');
+        log(`✅ Response generated (${botResponse.length} chars)`, 'complete');
+        
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 1000);
+        
+      } catch (error) {
+        log('❌ Chat error: ' + error.message, 'error');
+        updateProgress('running', 0, 'Error: ' + error.message);
+        
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'message bot-message';
+        errorMsg.style.color = 'red';
+        errorMsg.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        chatDiv.appendChild(errorMsg);
+        
+      } finally {
+        // Re-enable input
+        document.getElementById('userInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('userInput').focus();
+        
+        // Scroll chat to bottom
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      }
+    }
+
+    // Main initialization
+    async function init() {
+      try {
+        log('=== SYSTEM INITIALIZATION STARTED ===', 'info');
+        
+        // Initialize stages
+        stages = [
+          { name: 'waiting', message: 'Waiting for initialization...' },
+          { name: 'downloading', message: 'Downloading model files...' },
+          { name: 'loading', message: 'Loading AI engine...' },
+          { name: 'embedding', message: 'Preparing embeddings...' },
+          { name: 'running', message: 'System ready' }
+        ];
+        
+        updateProgress('waiting', 10, 'Starting initialization sequence');
+        
+        // Stage 1: Load WebLLM FIRST
+        updateProgress('waiting', 20, 'Loading WebLLM library');
+        const webllmLoaded = await loadWebLLM();
+        
+        if (!webllmLoaded) {
+          throw new Error('Failed to load WebLLM library. Check internet connection or try a different browser.');
+        }
+        
+        // Stage 2: Check browser compatibility
+        updateProgress('waiting', 30, 'Checking browser compatibility');
+        await checkBrowserCompatibility();
+        
+        // Stage 3: Create engine with progress callbacks
+        updateProgress('downloading', 40, 'Creating WebLLM engine');
+        
+        let downloadProgress = 40;
+        const downloadInterval = setInterval(() => {
+          if (downloadProgress < 70) {
+            downloadProgress += 2;
+            updateProgress('downloading', downloadProgress, 'Preparing model...');
+          } else {
+            clearInterval(downloadInterval);
+          }
+        }, 300);
+        
+        // Use WebLLM's CreateMLCEngine
+        log('Creating MLCEngine...', 'info');
+        
+        // Use a model that works reliably
+        const modelId = "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC";
+        
+        const engine = await window.webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (progress) => {
+            const percent = progress.progress ? Math.floor(progress.progress * 100) : downloadProgress;
+            const currentPercent = Math.min(95, Math.max(downloadProgress, percent));
+            updateProgress('downloading', currentPercent, progress.text || 'Loading model...');
+            log(`Model loading: ${progress.text}`, 'info');
+          }
+        });
+        
+        clearInterval(downloadInterval);
+        updateProgress('loading', 95, 'Engine created successfully');
+        log('✅ WebLLM engine created successfully', 'complete');
+        
+        // Store engine globally
+        window.chatEngine = engine;
+        
+        // Stage 4: Load documents
+        updateProgress('loading', 96, 'Loading document database');
+        try {
+          const res = await fetch("docs.json");
+          if (res.ok) {
+            window.docs = await res.json();
+            log(`✅ Loaded ${window.docs.length} documents`, 'complete');
+          } else {
+            log('⚠️ No docs.json found, will use web search instead', 'waiting');
+            window.docs = null;
+          }
+        } catch (e) {
+          log('⚠️ Could not load docs.json: ' + e.message, 'waiting');
+          window.docs = null;
+        }
+        
+        // Initialize embeddings object
+        window.embeddings = {};
+        
+        // Stage 5: Complete
+        updateProgress('running', 100, 'System ready for queries');
+        log('=== SYSTEM INITIALIZATION COMPLETE ===', 'complete');
+        
+        // Update status box
+        document.getElementById('statusBox').className = 'status-box status-good';
+        document.getElementById('browserStatus').innerHTML = '✅ System ready!';
+        document.getElementById('webllmStatus').innerHTML = '✅ WebLLM initialized';
+        
+        // Enable UI
+        document.getElementById('userInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('userInput').focus();
+        document.getElementById('userInput').placeholder = "Ask me anything...";
+        
+        // Hide progress bar after 3 seconds
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 3000);
+        
+      } catch (error) {
+        log('❌ Initialization error: ' + error.message, 'error');
+        updateProgress('waiting', 0, 'Initialization failed: ' + error.message);
+        document.getElementById('progressContainer').style.display = 'block';
+        
+        // Update status box to error
+        document.getElementById('statusBox').className = 'status-box status-error';
+        document.getElementById('browserStatus').innerHTML = '❌ Initialization failed';
+        document.getElementById('userInput').placeholder = "Initialization failed - check console";
+        
+        // Show error details
+        console.error('Full initialization error:', error);
+      }
+    }
+
+    // Initialize on page load
+    window.onload = init;
+    
+    // Allow Enter key to send message
+    document.getElementById('userInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    // Make sendMessage available globally
+    window.sendMessage = sendMessage;
+  </script>
+</body>
+</html>

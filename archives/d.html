@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebLLM + MCP + CAG Chatbot</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    #chat {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin-bottom: 20px;
+      height: 400px;
+      overflow-y: auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    #log {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+      height: 200px;
+      overflow-y: auto;
+      border-radius: 10px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px 0;
+      border-bottom: 1px solid #333;
+    }
+    .log-entry.log-complete { color: #8bc34a; font-weight: bold; }
+    .log-entry.log-error { color: #f44336; }
+    .log-entry.log-info { color: #bb86fc; }
+    .log-entry.log-warning { color: #ffb74d; }
+    
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin: 5px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50, #8bc34a);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    input, button {
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    input {
+      width: 70%;
+      margin-right: 10px;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background: #1976d2; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .message {
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 8px;
+      line-height: 1.4;
+    }
+    .user-message {
+      background: #e3f2fd;
+      text-align: right;
+      color: #1565c0;
+    }
+    .bot-message {
+      background: #f5f5f5;
+      text-align: left;
+      border-left: 3px solid #2196f3;
+    }
+    .context-indicator {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px solid #ddd;
+    }
+    
+    .status-box {
+      background: #2d3748;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #3182ce;
+      color: white;
+    }
+    .status-good { border-left-color: #38a169; }
+    .status-warning { border-left-color: #d69e2e; }
+    .status-error { border-left-color: #e53e3e; }
+    
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h2>🤖 WebLLM + CAG Chatbot with Local Context</h2>
+  
+  <div id="statusBox" class="status-box">
+    <div id="browserStatus"><span class="loader"></span>Initializing...</div>
+  </div>
+  
+  <div id="log"></div>
+  
+  <div id="progressContainer" style="display: none;">
+    <div id="currentStage">Initializing...</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+  
+  <div id="chat"></div>
+  
+  <div>
+    <input id="userInput" placeholder="Initializing..." disabled/>
+    <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+  </div>
+
+  <script type="module">
+    // ===== DOCUMENT DATABASE =====
+    // Will be loaded from local docs.json file
+    let SAMPLE_DOCS = [];
+
+    // Function to load docs.json from local directory
+    async function loadLocalDocs() {
+      try {
+        log('Attempting to load docs.json from local directory...', 'info');
+        const response = await fetch('./docs.json');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        SAMPLE_DOCS = await response.json();
+        log(`✅ Successfully loaded ${SAMPLE_DOCS.length} documents from local docs.json`, 'complete');
+        return true;
+        
+      } catch (error) {
+        log(`⚠️ Could not load local docs.json: ${error.message}`, 'warning');
+        log('Make sure docs.json is in the same directory as this HTML file', 'warning');
+        
+        // Return false to signal failure
+        return false;
+      }
+    }
+
+    // ===== GLOBAL STATE =====
+    let chatEngine = null;
+    let documentEmbeddings = {};
+
+    // ===== LOGGING =====
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function updateStatus(message) {
+      document.getElementById('browserStatus').textContent = message;
+    }
+
+    function updateProgress(progress, message) {
+      document.getElementById('progressContainer').style.display = 'block';
+      document.getElementById('currentStage').textContent = message;
+      document.getElementById('progressFill').style.width = `${progress}%`;
+    }
+
+    // ===== IMPROVED EMBEDDING =====
+    // Use TF-IDF inspired approach for better semantic matching
+    async function computeEmbedding(text) {
+      // Handle undefined or null text
+      if (!text || typeof text !== 'string') {
+        text = '';
+      }
+      
+      const normalized = text.toLowerCase();
+      const words = normalized.split(/\W+/).filter(w => w.length > 0);
+      
+      // Create word frequency vector (128 dimensions)
+      const embedding = new Array(128).fill(0);
+      
+      // Hash words to dimensions
+      for (const word of words) {
+        let hash = 0;
+        for (let i = 0; i < word.length; i++) {
+          hash = ((hash << 5) - hash) + word.charCodeAt(i);
+          hash |= 0;
+        }
+        const dim = Math.abs(hash) % 128;
+        embedding[dim] += 1;
+      }
+      
+      // Normalize
+      const magnitude = Math.sqrt(embedding.reduce((a, b) => a + b * b, 0));
+      if (magnitude > 0) {
+        return embedding.map(v => v / magnitude);
+      }
+      return embedding;
+    }
+
+    function cosineSimilarity(a, b) {
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+      }
+      const denom = Math.sqrt(normA) * Math.sqrt(normB);
+      return denom > 0 ? dot / denom : 0;
+    }
+
+    // ===== CONTEXT RETRIEVAL (FIXED) =====
+    async function retrieveContext(query) {
+      try {
+        log(`🔍 Retrieving context for: "${query}"`, 'info');
+        updateProgress(30, 'Computing query embedding...');
+        
+        const queryEmbedding = await computeEmbedding(query);
+        updateProgress(60, 'Searching documents...');
+        
+        let bestDoc = null;
+        let bestScore = -1;
+        
+        // Compute embeddings for all documents
+        for (const doc of SAMPLE_DOCS) {
+          if (!documentEmbeddings[doc.id]) {
+            // Use 'bio' field if 'text' is not available, fallback to 'name' or 'title'
+            const docText = doc.text || doc.bio || doc.title || doc.name || '';
+            documentEmbeddings[doc.id] = await computeEmbedding(docText);
+          }
+          
+          const similarity = cosineSimilarity(queryEmbedding, documentEmbeddings[doc.id]);
+          const docTitle = doc.title || doc.name || 'Unknown';
+          log(`  Document "${docTitle}": similarity ${similarity.toFixed(3)}`, 'info');
+          
+          if (similarity > bestScore) {
+            bestScore = similarity;
+            bestDoc = doc;
+          }
+        }
+        
+        updateProgress(90, 'Context retrieved');
+        
+        if (bestDoc && bestScore > 0.05) {
+          const docTitle = bestDoc.title || bestDoc.name || 'Unknown';
+          log(`✅ Using "${docTitle}" (score: ${bestScore.toFixed(3)})`, 'complete');
+          // Use bio field if text is not available
+          const docContent = bestDoc.text || bestDoc.bio || '';
+          return `[From: ${docTitle}]\n${docContent}`;
+        } else {
+          log('⚠️ No relevant documents found, using general knowledge', 'warning');
+          return '';
+        }
+        
+      } catch (error) {
+        log(`❌ Context retrieval error: ${error.message}`, 'error');
+        return '';
+      }
+    }
+
+    // ===== LOAD WEBLLM =====
+    async function loadWebLLM() {
+      try {
+        log('Loading WebLLM library from CDN...', 'info');
+        const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm');
+        window.webllm = webllm;
+        log('✅ WebLLM loaded successfully', 'complete');
+        return true;
+      } catch (error) {
+        log(`❌ Failed to load WebLLM: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    // ===== INITIALIZATION =====
+    async function initialize() {
+      try {
+        updateStatus('🔄 Initializing system...');
+        log('=== INITIALIZATION STARTED ===', 'info');
+        
+        updateProgress(10, 'Loading WebLLM library...');
+        const loaded = await loadWebLLM();
+        if (!loaded) throw new Error('WebLLM failed to load');
+        
+        updateProgress(30, 'Creating AI engine...');
+        log('Creating MLCEngine with TinyLlama...', 'info');
+        
+        const engine = await window.webllm.CreateMLCEngine('TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC', {
+          initProgressCallback: (progress) => {
+            const pct = Math.floor((progress.progress || 0) * 60) + 30;
+            updateProgress(pct, `Loading model: ${progress.text || 'preparing...'}`);
+          }
+        });
+        
+        chatEngine = engine;
+        log('✅ AI engine initialized', 'complete');
+        
+        updateProgress(90, 'Loading local documents...');
+        const docsLoaded = await loadLocalDocs();
+        
+        if (docsLoaded && SAMPLE_DOCS.length > 0) {
+          log(`✅ System has ${SAMPLE_DOCS.length} documents available for context`, 'complete');
+        } else {
+          log('⚠️ No local documents loaded - responses will use general knowledge only', 'warning');
+        }
+        
+        updateProgress(100, 'System ready!');
+        log('=== SYSTEM READY ===', 'complete');
+        
+        // Enable UI
+        document.getElementById('userInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('userInput').placeholder = 'Ask a question about forensic science...';
+        document.getElementById('userInput').focus();
+        updateStatus('✅ System ready! Ask me anything.');
+        
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 2000);
+        
+      } catch (error) {
+        log(`❌ Initialization failed: ${error.message}`, 'error');
+        updateStatus(`❌ Failed: ${error.message}`);
+        document.getElementById('userInput').placeholder = 'Initialization failed';
+      }
+    }
+
+    // ===== SEND MESSAGE =====
+    async function sendMessage() {
+      const input = document.getElementById('userInput').value.trim();
+      if (!input || !chatEngine) return;
+      
+      document.getElementById('userInput').value = '';
+      document.getElementById('userInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+      
+      const chatDiv = document.getElementById('chat');
+      
+      // Show user message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user-message';
+      userMsg.textContent = input;
+      chatDiv.appendChild(userMsg);
+      
+      try {
+        log(`Processing: "${input}"`, 'info');
+        updateProgress(10, 'Retrieving context...');
+        
+        const context = await retrieveContext(input);
+        updateProgress(40, 'Generating response...');
+        
+        const systemPrompt = context ? 
+          `You are a helpful AI assistant. Use this context to answer:\n\n${context}` :
+          'You are a helpful AI assistant.';
+        
+        const response = await chatEngine.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: input }
+          ],
+          temperature: 0.7,
+          max_tokens: 300
+        });
+        
+        const answer = response.choices?.[0]?.message?.content || 'No response generated';
+        updateProgress(100, 'Complete');
+        
+        // Show bot response
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = answer;
+        if (context) {
+          botMsg.innerHTML += `<div class="context-indicator">📚 Context used from local documents</div>`;
+        }
+        chatDiv.appendChild(botMsg);
+        
+        log('✅ Response generated', 'complete');
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+        const errMsg = document.createElement('div');
+        errMsg.className = 'message bot-message';
+        errMsg.style.color = '#d32f2f';
+        errMsg.textContent = `Error: ${error.message}`;
+        chatDiv.appendChild(errMsg);
+      } finally {
+        document.getElementById('userInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('userInput').focus();
+        document.getElementById('progressContainer').style.display = 'none';
+      }
+    }
+
+    // Start initialization
+    window.addEventListener('load', initialize);
+    
+    // Enter key to send
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('userInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+      });
+    });
+
+    window.sendMessage = sendMessage;
+  </script>
+</body>
+</html>
