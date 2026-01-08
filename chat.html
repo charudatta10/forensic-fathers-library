@@ -519,7 +519,7 @@
     // Load local docs.json
     async function loadLocalDocs() {
       try {
-        const response = await fetch('./docs.json');
+        const response = await fetch('https://raw.githubusercontent.com/charudatta10/forensic-fathers-library/refs/heads/main/docs.json');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         SAMPLE_DOCS = await response.json();
         updateProgressDot('docs', 'success', `Loaded ${SAMPLE_DOCS.length} documents`);
